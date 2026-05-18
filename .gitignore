@@ -1,0 +1,7 @@
+.kilo
+kilo.jsonc
+AGENTS.md
+.env
+__pycache__/
+*.pyc
+.venv/
