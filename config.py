@@ -1,4 +1,7 @@
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # api keys — loaded from environment
 GROWW_API_KEY = os.environ["GROWW_API_KEY"]
