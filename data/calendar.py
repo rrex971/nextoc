@@ -1,11 +1,15 @@
 import datetime
+import logging
 from typing import Set
 
 import nselib
 from nsepython import nse_holidays, nse_marketStatus
 
+logger = logging.getLogger(__name__)
+
 # cached holiday date set — populated on first call, lives for pipeline lifetime
 _holiday_cache: Set[datetime.date] | None = None
+_calendar_failed = False
 
 
 def _parse_holiday_date(raw: str) -> datetime.date:
@@ -13,7 +17,7 @@ def _parse_holiday_date(raw: str) -> datetime.date:
 
 
 def load_holiday_calendar() -> Set[datetime.date]:
-    global _holiday_cache
+    global _holiday_cache, _calendar_failed
 
     if _holiday_cache is not None:
         return _holiday_cache
@@ -23,14 +27,13 @@ def load_holiday_calendar() -> Set[datetime.date]:
     # nselib returns a bulk calendar for the current year — one call for all segments
     try:
         df = nselib.trading_holiday_calendar()
-        # first column is always tradingDate — name varies by segment
         for row in df.iloc[:, 0]:
             try:
                 holidays.add(_parse_holiday_date(str(row)))
             except (ValueError, TypeError):
                 continue
     except Exception:
-        pass  # TODO: log warning — holiday calendar fetch failed
+        logger.warning("nselib holiday calendar fetch failed")
 
     # fallback — nsepython's api endpoint covers the same data with a different shape
     if not holidays:
@@ -43,7 +46,11 @@ def load_holiday_calendar() -> Set[datetime.date]:
                     except (ValueError, KeyError, TypeError):
                         continue
         except Exception:
-            pass  # TODO: log warning — nse_holidays fallback also failed
+            logger.warning("nse_holidays fallback also failed")
+
+    if not holidays:
+        _calendar_failed = True
+        logger.warning("both holiday sources failed — defaulting to safe mode (all weekdays treated as holidays)")
 
     _holiday_cache = holidays
     return holidays
@@ -54,7 +61,11 @@ def is_trading_day(date: datetime.date | None = None) -> bool:
         date = datetime.date.today()
     if date.weekday() >= 5:
         return False
-    return date not in load_holiday_calendar()
+    holidays = load_holiday_calendar()
+    if _calendar_failed:
+        logger.warning("calendar in failed state — skipping %s to be safe", date)
+        return False
+    return date not in holidays
 
 
 def market_open() -> bool:

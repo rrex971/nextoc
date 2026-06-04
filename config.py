@@ -4,8 +4,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # api keys — loaded from environment
-GROWW_API_KEY = os.environ["GROWW_API_KEY"]
-GROWW_API_SECRET = os.environ["GROWW_API_SECRET"]
+# empty string default allows imports without groww api key configured
+GROWW_API_KEY = os.environ.get("GROWW_API_KEY", "")
+GROWW_API_SECRET = os.environ.get("GROWW_API_SECRET", "")
 GROWW_AUTH_MODE = os.environ.get("GROWW_AUTH_MODE", "key_secret")
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
@@ -30,10 +31,11 @@ LLM_RETRY_ATTEMPTS = 1
 NEWS_MAX_AGE_HOURS = 48
 NEWS_TOP_N = 3
 NEWS_DOMAINS = [
-    "economictimes.com",
-    "moneycontrol.com",
+    "economictimes.indiatimes.com",
+    "moneycontrol.com/news",
     "livemint.com",
     "business-standard.com",
+    "financialexpress.com",
 ]
 
 # feature engineering
@@ -57,11 +59,9 @@ WIN_PROBABILITY_MIN_TRADES = 30
 STARTING_PORTFOLIO = 100_000
 MAX_OPEN_POSITIONS = 5
 
-# groww
-GROWW_CANDLE_INTERVAL = "1 day"
-
 # paths
 DB_PATH = "data/nextoc.db"
+OHLCV_CACHE_PATH = "data/ohlcv_cache.db"
 UNIVERSE_CACHE_PATH = "data/universe.json"
 CHECKPOINT_DIR = "model/checkpoints"
 LOG_DIR = "logs"

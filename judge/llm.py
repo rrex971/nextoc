@@ -66,7 +66,7 @@ def judge_symbol(
     indicator_snapshot: dict[str, float],
     news_results: list[dict],
     regime_flag: int,
-    model_name: str = "deepseek-v4-flash",
+    model_name: str = "deepseek-chat",
     max_tokens: int = LLM_MAX_TOKENS,
     retry_attempts: int = LLM_RETRY_ATTEMPTS,
 ) -> tuple[float, str]:

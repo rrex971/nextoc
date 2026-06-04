@@ -1,3 +1,4 @@
+import datetime as dt
 import logging
 import sqlite3
 
@@ -85,13 +86,14 @@ def get_open_trades(db_path: str) -> list[dict]:
 
 
 def get_closed_trades(db_path: str, limit_days: int = 30) -> list[dict]:
+    cutoff = (dt.date.today() - dt.timedelta(days=limit_days)).isoformat()
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:
         rows = conn.execute(
             "select * from trades where exit_price is not null "
-            "order by date desc limit ?",
-            (limit_days,),
+            "and date >= ? order by date desc",
+            (cutoff,),
         ).fetchall()
         return [dict(row) for row in rows]
     finally:
@@ -99,15 +101,19 @@ def get_closed_trades(db_path: str, limit_days: int = 30) -> list[dict]:
 
 
 def get_cash_balance(db_path: str, starting_portfolio: float) -> float:
-    # realized pnl = sum of position_size_inr * actual_return for closed trades
     conn = sqlite3.connect(db_path)
     try:
-        rows = conn.execute(
+        all_rows = conn.execute(
+            "select position_size_inr from trades"
+        ).fetchall()
+        total_deployed = sum(row[0] for row in all_rows)
+
+        closed_rows = conn.execute(
             "select position_size_inr, actual_return from trades "
             "where exit_price is not null and actual_return is not null"
         ).fetchall()
+        total_proceeds = sum(row[0] * (1 + row[1]) for row in closed_rows)
     finally:
         conn.close()
 
-    realized_pnl = sum(row[0] * row[1] for row in rows)
-    return starting_portfolio + realized_pnl
+    return starting_portfolio - total_deployed + total_proceeds

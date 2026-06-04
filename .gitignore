@@ -7,3 +7,6 @@ __pycache__/
 .venv/
 lightning_logs/
 model/checkpoints/*.ckpt
+model/checkpoints/*_adapter.pt
+data/ohlcv_cache.db
+logs/

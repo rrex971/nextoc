@@ -1,19 +1,12 @@
 import logging
 
 from config import HURDLE, MAX_OPEN_POSITIONS, STARTING_PORTFOLIO
+from feedback.reward import compute_reward
 from trading.ledger import (
     get_open_trades, get_cash_balance, insert_trade, update_trade_exit,
 )
 
 logger = logging.getLogger(__name__)
-
-
-def _compute_reward(predicted_return: float, actual_return: float,
-                    hurdle: float = HURDLE) -> int:
-    # directional correctness: predicted must clear the cost hurdle
-    predicted_up = predicted_return > hurdle
-    actually_up = actual_return > 0
-    return 1 if predicted_up == actually_up else -1
 
 
 def close_positions(
@@ -36,7 +29,7 @@ def close_positions(
         exit_price = symbol_close_prices[symbol]
         entry_price = trade["entry_price"]
         actual_return = (exit_price - entry_price) / entry_price
-        reward = _compute_reward(trade["predicted_return"], actual_return, hurdle)
+        reward = compute_reward(trade["predicted_return"], actual_return, hurdle)
 
         update_trade_exit(db_path, trade["id"], exit_price, actual_return, reward)
         closed_count += 1

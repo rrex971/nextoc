@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 
 import pandas as pd
+import torch
 from pytorch_forecasting import TimeSeriesDataSet, TemporalFusionTransformer
 
 from config import CHECKPOINT_DIR
@@ -15,13 +16,14 @@ def predict_returns(
     sector_map: dict[str, str],
     checkpoint_dir: str = CHECKPOINT_DIR,
     batch_size: int = 64,
-) -> dict[str, float]:
+) -> tuple[dict[str, float], dict[str, torch.Tensor]]:
     sectors: dict[str, list[str]] = {}
     for symbol, sector in sector_map.items():
         if symbol in symbol_frames:
             sectors.setdefault(sector, []).append(symbol)
 
     results: dict[str, float] = {}
+    hidden_states: dict[str, torch.Tensor] = {}
 
     for sector, symbols in sectors.items():
         ckpt_path = Path(checkpoint_dir) / sector / "tft.ckpt"
@@ -52,14 +54,37 @@ def predict_returns(
         tft = TemporalFusionTransformer.load_from_checkpoint(str(ckpt_path))
         tft.eval()
 
+        hidden_capture: list[torch.Tensor] = []
+        def _capture_hook(module, input, output):
+            hidden_capture.append(input[0].detach().cpu())
+
+        handle = tft.output_layer.register_forward_hook(_capture_hook)
+
         result = tft.predict(
             dataloader,
             mode="prediction",
             return_index=True,
         )
 
+        handle.remove()
+
+        offset = 0
+        for batch_idx, batch_hidden in enumerate(hidden_capture):
+            batch_size_actual = batch_hidden.shape[0]
+            for i in range(batch_size_actual):
+                sym = result.index.iloc[offset + i]["symbol"]
+                hidden_states[sym] = batch_hidden[i, 0, :]
+            offset += batch_size_actual
+
         for i in range(len(result.output)):
             symbol = result.index.iloc[i]["symbol"]
             results[symbol] = result.output[i, 0].item()
 
-    return results
+    assert len(hidden_states) == len(results), (
+        f"hidden state alignment mismatch: {len(hidden_states)} states for {len(results)} symbols"
+    )
+    for sym in results:
+        if sym not in hidden_states:
+            logger.warning("symbol %s missing from hidden states", sym)
+
+    return results, hidden_states

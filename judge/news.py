@@ -16,7 +16,7 @@ def search_news(company_name: str, max_age_hours: int = NEWS_MAX_AGE_HOURS,
     try:
         exa = Exa(api_key=EXA_API_KEY)
         result = exa.search(
-            query=f"{company_name} stock NSE",
+            query=f"{company_name} NSE earnings results outlook",
             num_results=top_n,
             include_domains=NEWS_DOMAINS,
             contents={

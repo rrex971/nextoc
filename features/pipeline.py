@@ -5,10 +5,6 @@ from features.crosssectional import compute_crosssectional
 from features.indicators import compute_indicators
 
 
-def daily_return(df: pd.DataFrame) -> pd.Series:
-    return df["close"].pct_change()
-
-
 def assemble_features(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
 
