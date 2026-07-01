@@ -40,6 +40,7 @@ NEWS_DOMAINS = [
 
 # feature engineering
 MIN_LOOKBACK_DAYS = 60
+FETCH_DAYS = 180  # groww daily candle endpoint 180-day hard limit
 TARGET_RETURN_CLIP = 0.10
 OUTLIER_SIGMA = 3.0
 

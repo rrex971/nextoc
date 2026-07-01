@@ -103,9 +103,20 @@ def _retry_with_backoff(symbol: str, from_date: str, to_date: str) -> pd.DataFra
         try:
             return _fetch_from_groww(symbol, from_date, to_date)
         except GrowwAPIException as e:
+            error_lower = str(e).lower()
+
+            # non-retryable: hard api parameter constraints
+            # groww caps range at 180 days — "maximum of" / "reduce the time range" are not transient
+            if "maximum of" in error_lower or "reduce the time range" in error_lower:
+                logger.warning("non-retryable api constraint for %s: %s, skipping", symbol, e)
+                raise
+
+            # retryable: auth / token expiry — regenerate token before retry
             if hasattr(e, "code") and e.code in ("GA005",):
                 _client = None
                 _token_date = None
+
+            # retryable: rate limit and other transient groww errors
             delay = _BACKOFF_BASE_DELAY * (2 ** attempt)
             logger.warning(
                 "groww api attempt %d/%d for %s failed: %s, retrying in %.1fs",
